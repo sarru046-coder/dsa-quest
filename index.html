@@ -1,0 +1,582 @@
+import { useState, useEffect, useRef, useCallback } from "react";
+
+// ══════════════════════════════════════════════════════════════
+//  ALL DSA TOPICS  (Arrays → DP)
+// ══════════════════════════════════════════════════════════════
+const TOPICS = [
+  // ─── 1. ARRAYS ───
+  {
+    id:"arrays", name:"Arrays", emoji:"📦", color:"#FF6B35",
+    theory:{
+      title:"Arrays — The Foundation",
+      content:`Contiguous memory block. Same-type elements. Most fundamental DS.
+
+⚡ Time Complexity:
+  Access by index : O(1)   ← direct address calculation
+  Search unsorted : O(n)
+  Search sorted   : O(log n)  ← binary search
+  Insert at end   : O(1) amortized
+  Insert at index : O(n)  ← must shift elements right
+  Delete          : O(n)
+
+🧠 Key Techniques:
+  Two Pointers   — l & r converging/diverging
+  Sliding Window — variable or fixed window of k
+  Prefix Sum     — precompute cumsum for O(1) range queries
+  Kadane's Algo  — max subarray in O(n)
+
+📌 Memory:
+  arr = [10, 20, 30, 40, 50]
+  idx =   0   1   2   3   4
+  addr= base  +4  +8 +12 +16  (4 bytes/int)`
+    },
+    questions:[
+      { type:"theory",
+        q:"What is the time complexity of accessing arr[i] in an array?",
+        options:["O(n)","O(log n)","O(1)","O(n²)"],
+        answer:2,
+        explanation:"Address = base + (i × size). One arithmetic op → O(1) regardless of array size.",
+        leetcode:null, code:null, trace:null },
+      { type:"coding",
+        q:"LeetCode #53 — Maximum Subarray\nWhat does this print?",
+        options:["4","6","9","5"],
+        answer:1,
+        explanation:"Kadane's: curr=max(n, curr+n). Trace shows best=6 at i=6.\nSubarray [4,-1,2,1]=6 ✓",
+        leetcode:"Maximum Subarray (#53)",
+        code:`def maxSubArray(nums):
+    curr = best = nums[0]
+    for n in nums[1:]:
+        curr = max(n, curr + n)
+        best = max(best, curr)
+    return best
+
+print(maxSubArray([-2,1,-3,4,-1,2,1,-5,4]))`,
+        trace:`i=0 n=-2 curr=-2 best=-2
+i=1 n= 1 curr= 1 best= 1
+i=2 n=-3 curr=-2 best= 1
+i=3 n= 4 curr= 4 best= 4
+i=4 n=-1 curr= 3 best= 4
+i=5 n= 2 curr= 5 best= 5
+i=6 n= 1 curr= 6 best= 6 ✓
+i=7 n=-5 curr= 1 best= 6
+i=8 n= 4 curr= 5 best= 6
+
+Output: 6   subarray=[4,-1,2,1]` },
+      { type:"coding",
+        q:"LeetCode #1 — Two Sum\nWhat does twoSum([2,7,11,15], 9) return?",
+        options:["[0,1]","[1,2]","[0,2]","[2,7]"],
+        answer:0,
+        explanation:"HashMap stores complement. At i=1, n=7, need=2 found at index 0 → [0,1] ✓\nO(n) time vs O(n²) brute force.",
+        leetcode:"Two Sum (#1)",
+        code:`def twoSum(nums, target):
+    seen = {}
+    for i, n in enumerate(nums):
+        diff = target - n
+        if diff in seen:
+            return [seen[diff], i]
+        seen[n] = i
+
+print(twoSum([2,7,11,15], 9))`,
+        trace:`i=0: n=2, need=7 → not seen → seen={2:0}
+i=1: n=7, need=2 → IN seen at 0!
+     return [seen[2], 1] = [0, 1]
+
+Output: [0, 1] ✓` },
+      { type:"coding",
+        q:"LeetCode #121 — Best Time to Buy & Sell Stock\nprint(maxProfit([7,1,5,3,6,4])) → ?",
+        options:["4","5","6","7"],
+        answer:1,
+        explanation:"Track running min price and max profit. Buy@1 sell@6 = profit 5 ✓",
+        leetcode:"Best Time to Buy & Sell Stock (#121)",
+        code:`def maxProfit(prices):
+    mn = float('inf')
+    best = 0
+    for p in prices:
+        mn   = min(mn, p)
+        best = max(best, p - mn)
+    return best
+
+print(maxProfit([7,1,5,3,6,4]))`,
+        trace:`p=7 mn=7 best=0
+p=1 mn=1 best=0  ← cheapest
+p=5 mn=1 best=4
+p=3 mn=1 best=4
+p=6 mn=1 best=5  ← sell here
+p=4 mn=1 best=5
+
+Output: 5  (buy@1, sell@6) ✓` },
+    ]
+  },
+
+  // ─── 2. STRINGS ───
+  {
+    id:"strings", name:"Strings", emoji:"🔤", color:"#E91E63",
+    theory:{
+      title:"Strings — Character Sequences",
+      content:`Strings are immutable arrays of characters in most languages.
+
+⚡ Key Operations:
+  Access char  : O(1)
+  Concatenate  : O(n)  ← creates new string
+  Substring    : O(k)  k=length of sub
+  Search       : O(n·m) naive, O(n) KMP/Rabin-Karp
+
+🧠 Key Techniques:
+  Two Pointers   — palindrome check, reverse
+  Sliding Window — longest substring without repeat
+  HashMap/Set    — frequency count, anagram check
+  ASCII tricks   — 'a'-'a'=0, ord(c)-ord('a')
+
+📌 String vs Array:
+  s = "hello"   → immutable in Python/Java
+  arr=['h','e','l','l','o'] → mutable
+  String reversal: s[::-1] in Python O(n)
+
+Common patterns:
+  Anagram  : sort both or compare freq maps
+  Palindrome: two pointers from ends inward
+  Longest unique substring: sliding window`
+    },
+    questions:[
+      { type:"coding",
+        q:"LeetCode #125 — Valid Palindrome\nIs 'A man a plan a canal Panama' a palindrome?",
+        options:["True","False","Error","None"],
+        answer:0,
+        explanation:"Two pointers from ends. Skip non-alphanumeric. Compare lowercased chars.\nAfter filtering: 'amanaplanacanalpanama' — reads same forwards & backwards ✓",
+        leetcode:"Valid Palindrome (#125)",
+        code:`def isPalindrome(s):
+    l, r = 0, len(s)-1
+    while l < r:
+        while l<r and not s[l].isalnum(): l+=1
+        while l<r and not s[r].isalnum(): r-=1
+        if s[l].lower() != s[r].lower():
+            return False
+        l+=1; r-=1
+    return True
+
+print(isPalindrome("A man a plan a canal Panama"))`,
+        trace:`cleaned = "amanaplanacanalpanama"
+l=0 'a' == r=19 'a' ✓
+l=1 'm' == r=18 'm' ✓
+...all pairs match...
+Output: True ✓` },
+      { type:"coding",
+        q:"LeetCode #3 — Longest Substring Without Repeating Characters\nlengthOfLongestSubstring('abcabcbb') → ?",
+        options:["2","3","4","5"],
+        answer:1,
+        explanation:"Sliding window with a set. Expand right, shrink left on duplicate.\nBest window = 'abc' = length 3 ✓",
+        leetcode:"Longest Substring No Repeat (#3)",
+        code:`def lengthOfLongestSubstring(s):
+    seen = set()
+    l = best = 0
+    for r in range(len(s)):
+        while s[r] in seen:
+            seen.remove(s[l]); l+=1
+        seen.add(s[r])
+        best = max(best, r-l+1)
+    return best
+
+print(lengthOfLongestSubstring("abcabcbb"))`,
+        trace:`r=0 'a' → seen={a}         win=1
+r=1 'b' → seen={a,b}       win=2
+r=2 'c' → seen={a,b,c}     win=3 ✓
+r=3 'a' → dup! rm 'a',l=1
+         seen={b,c,a}       win=3
+r=4 'b' → dup! rm 'b',l=2  win=3
+...
+Output: 3  ("abc") ✓` },
+      { type:"theory",
+        q:"LeetCode #242 — Valid Anagram: best approach for s='anagram', t='nagaram'?",
+        options:["Sort both strings O(n log n)","Counter/frequency map O(n)","Nested loops O(n²)","Trie"],
+        answer:1,
+        explanation:"Count char frequencies in both strings. If maps are equal → anagram.\nCounter({'a':3,'n':1,'g':1,'r':1,'m':1}) matches both strings.\nO(n) time, O(1) space (26 lowercase letters).",
+        leetcode:"Valid Anagram (#242)",
+        code:null, trace:null },
+    ]
+  },
+
+  // ─── 3. LINKED LISTS ───
+  {
+    id:"linkedlist", name:"Linked Lists", emoji:"🔗", color:"#9B59B6",
+    theory:{
+      title:"Linked Lists — Dynamic Chains",
+      content:`Nodes holding data + pointer. No contiguous memory needed.
+
+🔑 Types:
+  Singly  : [data|next→]
+  Doubly  : [←prev|data|next→]
+  Circular: tail.next = head
+
+⚡ vs Array:
+  Operation       Array  LinkedList
+  Access by idx   O(1)   O(n)
+  Insert at head  O(n)   O(1) ← just rewire
+  Insert at tail  O(1)*  O(1) with tail ptr
+  Delete node     O(n)   O(1) if you have it
+
+🧠 Techniques:
+  Fast & Slow pointers  — cycle detect, middle
+  Reverse in-place      — prev/curr/nxt 3-ptr
+  Dummy head node       — simplifies edge cases
+  Merge sorted          — two-pointer merge
+
+📌 Reversal walkthrough:
+  None←1  2→3→4→5
+  None←1←2  3→4→5
+  None←1←2←3←4←5  done!`
+    },
+    questions:[
+      { type:"coding",
+        q:"LeetCode #206 — Reverse Linked List\nInput: 1→2→3→4→5\nreturn value?",
+        options:["5→4→3→2→1→None","1→2→3→4→5→None","3→2→1→4→5","None"],
+        answer:0,
+        explanation:"3-pointer reversal: nxt=curr.next, curr.next=prev, prev=curr, curr=nxt\nAfter 5 steps: 5→4→3→2→1→None ✓ O(n) time O(1) space.",
+        leetcode:"Reverse Linked List (#206)",
+        code:`def reverseList(head):
+    prev = None
+    curr = head
+    while curr:
+        nxt       = curr.next
+        curr.next = prev
+        prev      = curr
+        curr      = nxt
+    return prev`,
+        trace:`prev=None, curr=1
+Step1: nxt=2, 1.next=None, prev=1, curr=2
+Step2: nxt=3, 2.next=1,    prev=2, curr=3
+Step3: nxt=4, 3.next=2,    prev=3, curr=4
+Step4: nxt=5, 4.next=3,    prev=4, curr=5
+Step5: nxt=None,5.next=4,  prev=5, curr=None
+return prev → 5→4→3→2→1→None ✓` },
+      { type:"coding",
+        q:"LeetCode #876 — Middle of Linked List\nFor 1→2→3→4→5, what node does slow point to?",
+        options:["Node 2","Node 3","Node 4","Node 1"],
+        answer:1,
+        explanation:"Slow+1, Fast+2. When fast ends, slow=middle.\nStep1: slow=2,fast=3. Step2: slow=3,fast=5→stop.\nMiddle = Node(3) ✓",
+        leetcode:"Middle of Linked List (#876)",
+        code:`def middleNode(head):
+    slow = fast = head
+    while fast and fast.next:
+        slow = slow.next
+        fast = fast.next.next
+    return slow`,
+        trace:`1→2→3→4→5
+Start: slow=1, fast=1
+Step1: slow=2, fast=3
+Step2: slow=3, fast=5
+fast.next=None → STOP
+return slow = Node(3) ✓` },
+      { type:"coding",
+        q:"LeetCode #21 — Merge Two Sorted Lists\nl1=1→2→4, l2=1→3→4 → result?",
+        options:["1→1→2→3→4→4","1→2→1→3→4→4","1→1→3→2→4→4","2→3→4→1→1→4"],
+        answer:0,
+        explanation:"Compare heads, pick smaller, advance that pointer.\n1vs1→l1, 2vs1→l2, 2vs3→l1, 4vs3→l2, 4vs4→l1, append l2(4)\n→ 1→1→2→3→4→4 ✓",
+        leetcode:"Merge Two Sorted Lists (#21)",
+        code:`def mergeTwoLists(l1, l2):
+    dummy = cur = ListNode(0)
+    while l1 and l2:
+        if l1.val <= l2.val:
+            cur.next = l1; l1=l1.next
+        else:
+            cur.next = l2; l2=l2.next
+        cur = cur.next
+    cur.next = l1 or l2
+    return dummy.next`,
+        trace:`1vs1→pick l1(1)  chain:1
+2vs1→pick l2(1)  chain:1→1
+2vs3→pick l1(2)  chain:1→1→2
+4vs3→pick l2(3)  chain:1→1→2→3
+4vs4→pick l1(4)  chain:1→1→2→3→4
+append l2(4)     chain:1→1→2→3→4→4 ✓` },
+    ]
+  },
+
+  // ─── 4. STACKS & QUEUES ───
+  {
+    id:"stackqueue", name:"Stacks & Queues", emoji:"📚", color:"#00BCD4",
+    theory:{
+      title:"Stacks & Queues — LIFO & FIFO",
+      content:`Stack: LIFO (Last In First Out) — like a pile of plates
+Queue: FIFO (First In First Out) — like a line of people
+
+⚡ Both operations O(1):
+  Stack: push(x), pop(), peek(), isEmpty()
+  Queue: enqueue(x), dequeue(), front(), isEmpty()
+
+🧠 Stack Use Cases:
+  • Function call stack / recursion
+  • Valid parentheses matching
+  • Next Greater Element (Monotonic Stack)
+  • Evaluate expressions (postfix)
+  • DFS iterative
+
+🧠 Queue Use Cases:
+  • BFS (level-order traversal)
+  • Sliding window maximum
+  • Task scheduling, FIFO buffers
+
+📌 Monotonic Stack:
+  Find next greater element for each item.
+  Maintain stack in decreasing order.
+  When new element > stack.top → pop & record answer.
+
+Deque (double-ended queue):
+  Push/pop from both ends O(1)
+  Used for sliding window maximum`
+    },
+    questions:[
+      { type:"coding",
+        q:"LeetCode #20 — Valid Parentheses\nisValid('({[]})') → ?",
+        options:["True","False","Error","None"],
+        answer:0,
+        explanation:"Stack approach: push opening brackets. On closing, pop and check match.\n({[]}): push( push{ push[ pop]✓ pop}✓ pop)✓ stack empty → True ✓",
+        leetcode:"Valid Parentheses (#20)",
+        code:`def isValid(s):
+    stack = []
+    match = {')':'(', '}':'{', ']':'['}
+    for c in s:
+        if c in '([{':
+            stack.append(c)
+        elif not stack or stack[-1] != match[c]:
+            return False
+        else:
+            stack.pop()
+    return len(stack) == 0
+
+print(isValid("({[]})"))`,
+        trace:`c='(' → stack=['(']
+c='{' → stack=['(', '{']
+c='[' → stack=['(', '{', '[']
+c=']' → match='[' == top ✓ pop → ['(', '{']
+c='}' → match='{' == top ✓ pop → ['(']
+c=')' → match='(' == top ✓ pop → []
+stack empty → True ✓` },
+      { type:"theory",
+        q:"LeetCode #739 — Daily Temperatures. Which data structure gives O(n) solution?",
+        options:["Two nested loops O(n²)","Monotonic decreasing stack","Min-heap","Prefix sum array"],
+        answer:1,
+        explanation:"Monotonic Stack: keep indices of temps in decreasing order.\nWhen today's temp > stack.top temp → pop, answer[top] = today - top.\nEach index pushed and popped at most once → O(n) total.",
+        leetcode:"Daily Temperatures (#739)",
+        code:null, trace:null },
+      { type:"coding",
+        q:"LeetCode #232 — Implement Queue using Stacks\nAfter push(1),push(2),peek() → ?",
+        options:["1","2","None","Error"],
+        answer:0,
+        explanation:"Use 2 stacks. Stack1 for push, Stack2 for pop/peek.\npush(1): s1=[1]. push(2): s1=[1,2].\npeek(): s2 empty→move s1→s2=[2,1]. s2.top=1 ✓\nFIFO order preserved: 1 was enqueued first.",
+        leetcode:"Implement Queue using Stacks (#232)",
+        code:`class MyQueue:
+    def __init__(self):
+        self.s1 = []  # push stack
+        self.s2 = []  # pop stack
+
+    def push(self, x):
+        self.s1.append(x)
+
+    def peek(self):
+        if not self.s2:
+            while self.s1:
+                self.s2.append(self.s1.pop())
+        return self.s2[-1]`,
+        trace:`push(1) → s1=[1], s2=[]
+push(2) → s1=[1,2], s2=[]
+peek():
+  s2 empty → move s1 to s2
+  s1=[1,2] → s2=[2,1]
+  s2[-1] = 1 ← FIFO front
+
+Output: 1 ✓` },
+    ]
+  },
+
+  // ─── 5. TREES & BST ───
+  {
+    id:"trees", name:"Trees & BST", emoji:"🌲", color:"#27AE60",
+    theory:{
+      title:"Trees & Binary Search Trees",
+      content:`Hierarchical structure. BST adds ordering invariant.
+
+🔑 BST Property (at every node):
+  left subtree  < node.val < right subtree
+
+⚡ BST Time Complexity:
+  Operation    Balanced    Worst(skewed)
+  Search       O(log n)    O(n)
+  Insert       O(log n)    O(n)
+  Delete       O(log n)    O(n)
+
+🧠 Traversals:
+  Inorder   L→Node→R  → sorted output for BST
+  Preorder  Node→L→R  → copy/serialize tree
+  Postorder L→R→Node  → delete tree
+  Level BFS queue      → level sums, min depth
+
+📌 BST:
+       5
+      / \\
+     3   7
+    /\\ /\\
+   2 4 6  8
+Inorder: [2,3,4,5,6,7,8] sorted!
+
+Self-balancing BSTs: AVL, Red-Black
+Height guaranteed O(log n) → all ops O(log n)`
+    },
+    questions:[
+      { type:"coding",
+        q:"LeetCode #104 — Max Depth of Binary Tree\nDepth of tree with root=3, children=9,20, 20's children=15,7?",
+        options:["2","3","4","1"],
+        answer:1,
+        explanation:"depth = 1 + max(depth(left), depth(right))\ndepth(9)=1, depth(15)=1, depth(7)=1\ndepth(20)=2, depth(3)=3 ✓",
+        leetcode:"Maximum Depth of Binary Tree (#104)",
+        code:`def maxDepth(root):
+    if not root: return 0
+    return 1 + max(maxDepth(root.left),
+                   maxDepth(root.right))
+#       3
+#      / \\
+#     9  20
+#        /\\
+#       15  7`,
+        trace:`maxDepth(3)
+  maxDepth(9) → 1+max(0,0)=1
+  maxDepth(20)
+    maxDepth(15) → 1
+    maxDepth(7)  → 1
+  → 1+max(1,1)=2
+→ 1+max(1,2)=3 ✓` },
+      { type:"coding",
+        q:"LeetCode #226 — Invert Binary Tree\nAfter inverting [4,2,7,1,3,6,9], root.left.val = ?",
+        options:["2","7","1","9"],
+        answer:1,
+        explanation:"Swap left↔right at every node recursively.\nOriginal: root.left=2. After invert: root.left=7 ✓",
+        leetcode:"Invert Binary Tree (#226)",
+        code:`def invertTree(root):
+    if not root: return None
+    root.left, root.right = root.right, root.left
+    invertTree(root.left)
+    invertTree(root.right)
+    return root`,
+        trace:`Original:     4          Inverted:     4
+             /  \\                       /  \\
+            2    7          →          7    2
+           /\\   /\\                    /\\   /\\
+          1  3 6  9                  9  6 3  1
+
+root.left.val = 7 ✓` },
+      { type:"coding",
+        q:"LeetCode #235 — LCA of BST\nBST rooted at 6. LCA(2, 8) = ?",
+        options:["Node 2","Node 4","Node 6","Node 8"],
+        answer:2,
+        explanation:"BST LCA: if p<node and q>node → current node is LCA (they diverge).\np=2<6 and q=8>6 → LCA=Node(6) ✓",
+        leetcode:"LCA of BST (#235)",
+        code:`def lowestCommonAncestor(root, p, q):
+    node = root
+    while node:
+        if p.val < node.val and q.val < node.val:
+            node = node.left
+        elif p.val > node.val and q.val > node.val:
+            node = node.right
+        else:
+            return node`,
+        trace:`BST: root=6, left=2, right=8
+p=2, q=8
+
+At node 6: 2 < 6 < 8 → they split here!
+→ return Node(6) ✓` },
+    ]
+  },
+
+  // ─── 6. HEAPS / PRIORITY QUEUES ───
+  {
+    id:"heaps", name:"Heaps", emoji:"🏔️", color:"#FF5722",
+    theory:{
+      title:"Heaps & Priority Queues",
+      content:`Complete binary tree satisfying heap property.
+  Min-Heap: parent ≤ children (root = minimum)
+  Max-Heap: parent ≥ children (root = maximum)
+
+⚡ Time Complexity:
+  Insert (push)      : O(log n)  ← sift up
+  Extract min/max    : O(log n)  ← sift down
+  Peek min/max       : O(1)
+  Build heap from arr: O(n)  ← heapify
+
+🧠 Use Cases:
+  • Kth largest/smallest element
+  • Merge k sorted lists
+  • Top K frequent elements
+  • Dijkstra's shortest path
+  • Median of data stream (two heaps)
+
+📌 Python heapq (min-heap by default):
+  import heapq
+  h = []
+  heapq.heappush(h, 3)
+  heapq.heappush(h, 1)
+  heapq.heappush(h, 2)
+  heapq.heappop(h)  → 1  (minimum)
+
+  For max-heap: negate values
+  heapq.heappush(h, -val)
+
+Array representation:
+  parent(i) = (i-1)//2
+  left(i)   = 2*i+1
+  right(i)  = 2*i+2`
+    },
+    questions:[
+      { type:"coding",
+        q:"LeetCode #215 — Kth Largest Element\nfindKthLargest([3,2,1,5,6,4], k=2) → ?",
+        options:["4","5","6","3"],
+        answer:1,
+        explanation:"Min-heap of size k: heap root = kth largest.\nAfter processing all: heap=[5,6]. heap[0]=5 ✓\nO(n log k) time — better than full sort for small k.",
+        leetcode:"Kth Largest Element (#215)",
+        code:`import heapq
+
+def findKthLargest(nums, k):
+    heap = []
+    for n in nums:
+        heapq.heappush(heap, n)
+        if len(heap) > k:
+            heapq.heappop(heap)
+    return heap[0]
+
+print(findKthLargest([3,2,1,5,6,4], k=2))`,
+        trace:`push 3 → [3]
+push 2 → [2,3]
+push 1 → [1,2,3] → pop→[2,3]
+push 5 → [2,3,5] → pop→[3,5]
+push 6 → [3,5,6] → pop→[5,6]
+push 4 → [4,5,6] → pop→[5,6]
+heap[0]=5 ← 2nd largest ✓` },
+      { type:"theory",
+        q:"LeetCode #347 — Top K Frequent Elements. Which approach is O(n log k)?",
+        options:["Sort by frequency O(n log n)","Min-heap of size k O(n log k)","Bucket sort O(n)","BFS"],
+        answer:1,
+        explanation:"Build frequency map O(n). Then maintain min-heap of size k.\nFor each (freq, num): push to heap, pop if size > k.\nFinal heap has k most frequent. O(n log k) — better than full sort when k << n.",
+        leetcode:"Top K Frequent Elements (#347)",
+        code:null, trace:null },
+      { type:"theory",
+        q:"LeetCode #295 — Median Finder. How to find median in O(log n) insert, O(1) query?",
+        options:["Sort array on each insert","Two heaps: max-heap (left half) + min-heap (right half)","Binary search tree","Counting sort"],
+        answer:1,
+        explanation:"Two heaps trick:\n• Max-heap: stores smaller half (top = max of left)\n• Min-heap: stores larger half (top = min of right)\nBalance sizes: |left| - |right| ≤ 1\nMedian = top of larger heap (odd) or avg of both tops (even)\nInsert: O(log n), Query: O(1) ✓",
+        leetcode:"Find Median from Data Stream (#295)",
+        code:null, trace:null },
+    ]
+  },
+
+  // ─── 7. GRAPHS ───
+  {
+    id:"graphs", name:"Graphs", emoji:"🕸️", color:"#E74C3C",
+    theory:{
+      title:"Graphs — The Universal DS",
+      content:`G=(V,E): vertices + edges. Models everything.
+
+🔑 Types:
+  Directed / Undirected — edges have direction or not
+  Weighted / Unweighted — edges have costs or not
+  Cyclic / Acyclic (DAG)
+
+📊 Representations:
+  Adjacency List  : O(V+E) space  ← pref
